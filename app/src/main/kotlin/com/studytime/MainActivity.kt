@@ -1,10 +1,14 @@
 package com.studytime
 
 import android.app.AlertDialog
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -15,20 +19,16 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class MainActivity : AppCompatActivity() {
     private lateinit var timerDisplay: TextView
-    private lateinit var btnStart: Button
-    private lateinit var btnPause: Button
-    private lateinit var btnStop: Button
+    private lateinit var emptyTimerText: TextView
     private lateinit var btnSettings: Button
-    private lateinit var customTimerInput: EditText
-    private lateinit var btnCustomTimer: Button
     private lateinit var customTimerContainer: LinearLayout
     private lateinit var preferenceManager: PreferenceManager
     private lateinit var messageRepository: MessageRepository
-    private lateinit var timerManager: TimerManager
     private lateinit var devicePolicyManager: DevicePolicyManager
     private lateinit var powerManager: PowerManager
     private var wakeLock: PowerManager.WakeLock? = null
@@ -37,13 +37,17 @@ class MainActivity : AppCompatActivity() {
     private var isTimerRunning: Boolean = false
     private var isPaused: Boolean = false
     private var remainingMillis: Long = 0L
+    private var wasTimerRunningBeforePause: Boolean = false
+    private lateinit var timerBroadcastReceiver: TimerBroadcastReceiver
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        createNotificationChannel()
         initializeViews()
         initializeManagers()
+        applyUIColors()
         checkDeviceAdminPermission()
         setupClickListeners()
         updateCustomTimerButtons()
@@ -51,12 +55,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun initializeViews() {
         timerDisplay = findViewById(R.id.timerDisplay)
-        btnStart = findViewById(R.id.btnStart)
-        btnPause = findViewById(R.id.btnPause)
-        btnStop = findViewById(R.id.btnStop)
+        emptyTimerText = findViewById(R.id.emptyTimerText)
         btnSettings = findViewById(R.id.btnSettings)
-        customTimerInput = findViewById(R.id.customTimerInput)
-        btnCustomTimer = findViewById(R.id.btnCustomTimer)
         customTimerContainer = findViewById(R.id.customTimerContainer)
     }
 
@@ -66,17 +66,24 @@ class MainActivity : AppCompatActivity() {
         devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
 
-        timerManager = TimerManager(
-            context = this,
-            onTickCallback = { millisUntilFinished ->
+        // TimerService로부터 브로드캐스트 수신
+        timerBroadcastReceiver = TimerBroadcastReceiver(
+            onUpdate = { millisUntilFinished ->
                 remainingMillis = millisUntilFinished
                 updateTimerDisplay(millisUntilFinished)
-                broadcastTimerUpdate(millisUntilFinished)
             },
-            onFinishCallback = {
+            onFinish = {
                 handleTimerFinish()
             }
         )
+
+        val filter = IntentFilter("com.studytime.TIMER_UPDATE")
+        filter.addAction("com.studytime.TIMER_FINISHED")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(timerBroadcastReceiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(timerBroadcastReceiver, filter)
+        }
     }
 
     private fun checkDeviceAdminPermission() {
@@ -117,20 +124,15 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
+    private fun applyUIColors() {
+        val colorName = preferenceManager.getUIColor()
+        val primaryColor = ColorUtils.getPrimaryColor(this, colorName)
+        timerDisplay.setTextColor(primaryColor)
+        emptyTimerText.setTextColor(primaryColor)
+        btnSettings.setBackgroundColor(primaryColor)
+    }
+
     private fun setupClickListeners() {
-        findViewById<Button>(R.id.btn5sec).setOnClickListener { selectTimer(seconds = 5) }
-        findViewById<Button>(R.id.btn5min).setOnClickListener { selectTimer(minutes = 5) }
-        findViewById<Button>(R.id.btn10min).setOnClickListener { selectTimer(minutes = 10) }
-        findViewById<Button>(R.id.btn15min).setOnClickListener { selectTimer(minutes = 15) }
-        findViewById<Button>(R.id.btn25min).setOnClickListener { selectTimer(minutes = 25) }
-        findViewById<Button>(R.id.btn50min).setOnClickListener { selectTimer(minutes = 50) }
-
-        btnCustomTimer.setOnClickListener { addCustomTimer() }
-
-        btnStart.setOnClickListener { startTimer() }
-        btnPause.setOnClickListener { pauseTimer() }
-        btnStop.setOnClickListener { stopTimer() }
-
         btnSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
@@ -142,45 +144,33 @@ class MainActivity : AppCompatActivity() {
             selectedMinutes = if (seconds > 0) 0 else minutes
             remainingMillis = (totalSeconds * 1000).toLong()
             updateTimerDisplay(remainingMillis)
-            val displayText = if (seconds > 0) "$seconds second timer started" else "$minutes minute timer started"
-            Toast.makeText(this, displayText, Toast.LENGTH_SHORT).show()
             startTimer()
         }
     }
 
-    private fun addCustomTimer() {
-        val input = customTimerInput.text.toString().trim()
-        if (input.isEmpty()) {
-            Toast.makeText(this, "Please enter minutes", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val minutes = input.toIntOrNull() ?: return
-        if (minutes <= 0 || minutes > 1440) {
-            Toast.makeText(this, "Enter value between 1-1440", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        preferenceManager.addCustomTimer(minutes)
-        customTimerInput.text.clear()
-        updateCustomTimerButtons()
-        Toast.makeText(this, "$minutes minute timer added", Toast.LENGTH_SHORT).show()
-    }
-
     private fun updateCustomTimerButtons() {
         customTimerContainer.removeAllViews()
-        val customTimers = preferenceManager.getCustomTimers()
+        val customTimers = preferenceManager.getCustomTimers().sorted()
+
+        if (customTimers.isEmpty()) {
+            emptyTimerText.visibility = android.view.View.VISIBLE
+            return
+        } else {
+            emptyTimerText.visibility = android.view.View.GONE
+        }
 
         for (minutes in customTimers) {
             val btn = Button(this).apply {
-                text = "$minutes min"
+                text = "${minutes}분"
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply {
                     setMargins(4, 4, 4, 4)
                 }
-                setOnClickListener { selectTimer(minutes) }
+                setOnClickListener { 
+                    selectTimer(minutes)
+                }
                 setOnLongClickListener {
                     preferenceManager.removeCustomTimer(minutes)
                     updateCustomTimerButtons()
@@ -193,7 +183,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startTimer() {
         if (remainingMillis == 0L) {
-            Toast.makeText(this, "Select a timer", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "타이머를 선택하세요", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -202,49 +192,28 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (isPaused) {
-            timerManager.resumeTimer(remainingMillis)
-            isPaused = false
-        } else {
-            isTimerRunning = true
-            timerManager.startTimerMillis(remainingMillis)
-            acquireWakeLock()
-            setKeepScreenOn(true)
-            // 잠금화면 액티비티 표시
-            startActivity(Intent(this, LockScreenActivity::class.java))
-        }
-
         isTimerRunning = true
-        btnStart.isEnabled = false
-        btnPause.isEnabled = true
-        btnStop.isEnabled = true
-    }
-
-    private fun pauseTimer() {
-        if (isTimerRunning) {
-            timerManager.pauseTimer()
-            isPaused = true
-            btnStart.isEnabled = true
-            btnStart.text = "Resume"
-            btnPause.isEnabled = false
-            btnStop.isEnabled = true
-        }
-    }
-
-    private fun stopTimer() {
-        isTimerRunning = false
         isPaused = false
-        selectedMinutes = 0
-        remainingMillis = 0
-        timerManager.cancelTimer()
-        updateTimerDisplay(0)
-        releaseWakeLock()
-        setKeepScreenOn(false)
-
-        btnStart.isEnabled = true
-        btnStart.text = "Start"
-        btnPause.isEnabled = false
-        btnStop.isEnabled = false
+        
+        // 이전 타이머 상태 초기화
+        preferenceManager.clearTimerState()
+        
+        val lockScreenIntent = Intent(this, LockScreenActivity::class.java)
+        lockScreenIntent.putExtra("initialDuration", remainingMillis)
+        startActivity(lockScreenIntent)
+        
+        val serviceIntent = Intent(this, TimerService::class.java)
+        serviceIntent.action = if (isPaused) "RESUME_TIMER" else "START_TIMER"
+        serviceIntent.putExtra("duration", remainingMillis)
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
+        
+        acquireWakeLock()
+        setKeepScreenOn(true)
     }
 
     private fun handleTimerFinish() {
@@ -253,16 +222,12 @@ class MainActivity : AppCompatActivity() {
         releaseWakeLock()
         setKeepScreenOn(false)
 
-        btnStart.isEnabled = true
-        btnStart.text = "Start"
-        btnPause.isEnabled = false
-        btnStop.isEnabled = false
-        
-        // 타이머 디스플레이를 00:00으로 초기화
         updateTimerDisplay(0)
 
         val praise = messageRepository.getRandomMessage()
         showPraiseDialog(praise)
+        
+        showCompletionNotification(praise)
     }
 
     private fun showPraiseDialog(praise: String) {
@@ -283,6 +248,49 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "timer_channel",
+                "Timer Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            channel.description = "Notifications for timer completion"
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun showCompletionNotification(praise: String) {
+        val userName = preferenceManager.getUserName()
+        val notificationTitle = if (userName.isNotEmpty()) {
+            val particle = if (userName.endsWith("이")) "여" else if (isConsonantEnding(userName)) "아" else "야"
+            "$userName$particle, 타이머 완료!"
+        } else {
+            "타이머 완료!"
+        }
+
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, "timer_channel")
+            .setContentTitle(notificationTitle)
+            .setContentText(praise)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.notify(1, notification)
+    }
+
     private fun isConsonantEnding(name: String): Boolean {
         if (name.isEmpty()) return false
         val lastChar = name.last()
@@ -300,7 +308,7 @@ class MainActivity : AppCompatActivity() {
     private fun acquireWakeLock() {
         if (wakeLock == null) {
             wakeLock = powerManager.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
+                PowerManager.FULL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
                 "StudyTime::TimerWakeLock"
             )
             wakeLock?.acquire(24 * 60 * 60 * 1000L)
@@ -324,20 +332,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun broadcastTimerUpdate(millisUntilFinished: Long) {
-        val intent = Intent("com.studytime.TIMER_UPDATE").apply {
-            putExtra("millisUntilFinished", millisUntilFinished)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
-        } else {
-            sendBroadcast(intent)
+    override fun onPause() {
+        super.onPause()
+        // 타이머가 실행 중이면 상태 저장 (TimerManager는 시스템 시간 기반이라 계속 실행됨)
+        wasTimerRunningBeforePause = isTimerRunning
+    }
+
+    override fun onResume() {
+        super.onResume()
+        applyUIColors()
+        updateCustomTimerButtons()
+        
+        // 타이머 상태 확인 (LockScreenActivity에서 돌아왔을 수 있음)
+        if (!preferenceManager.isTimerRunning()) {
+            val endTime = preferenceManager.getTimerEndTime()
+            if (endTime == 0L) {
+                // 타이머 완전 종료 상태
+                timerDisplay.text = "00:00"
+                isTimerRunning = false
+                selectedMinutes = 0
+                remainingMillis = 0L
+            }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         releaseWakeLock()
-        timerManager.cancelTimer()
+        try {
+            unregisterReceiver(timerBroadcastReceiver)
+        } catch (e: Exception) {
+            // ignore
+        }
     }
 }

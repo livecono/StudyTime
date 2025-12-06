@@ -4,16 +4,21 @@ import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
-import android.os.CountDownTimer
+import android.os.Handler
+import android.os.Looper
 import android.os.Vibrator
 import android.util.Log
-import android.view.WindowManager
-import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import kotlin.concurrent.thread
 
 class TimerManager(private val context: Context, private val onTickCallback: (Long) -> Unit, private val onFinishCallback: () -> Unit) {
-    private var countDownTimer: CountDownTimer? = null
     private val devicePolicyManager = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+    
+    // 백그라운드 스레드 기반 타이머
+    private var timerThread: Thread? = null
+    private var isTimerRunning = false
+    private var timerEndTime: Long = 0L
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     fun startTimer(durationMinutes: Int) {
         val durationMillis = durationMinutes * 60 * 1000L
@@ -21,63 +26,128 @@ class TimerManager(private val context: Context, private val onTickCallback: (Lo
     }
 
     fun startTimerMillis(durationMillis: Long) {
-        countDownTimer = object : CountDownTimer(durationMillis, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                onTickCallback(millisUntilFinished)
-                // 타이머 실행 중 매번 잠금화면 유지
-                maintainFocusMode()
-            }
-
-            override fun onFinish() {
-                lockScreen()
-                playCompletionSound()
-                vibrateOnCompletion()
-                // 타이머 완료 브로드캐스트 전송
-                sendTimerFinishBroadcast()
-                onFinishCallback()
+        // 기존 타이머 취소
+        cancelTimer()
+        
+        // 시스템 시간 기반 타이머 시작
+        isTimerRunning = true
+        timerEndTime = System.currentTimeMillis() + durationMillis
+        Log.i("TimerManager", "Timer started: ${durationMillis}ms, endTime: $timerEndTime")
+        
+        maintainFocusMode()
+        
+        // 백그라운드 스레드에서 타이머 실행
+        timerThread = thread(isDaemon = false) {
+            try {
+                while (isTimerRunning && System.currentTimeMillis() < timerEndTime) {
+                    val currentTime = System.currentTimeMillis()
+                    val remainingMillis = timerEndTime - currentTime
+                    
+                    if (remainingMillis <= 0) {
+                        break
+                    }
+                    
+                    // UI 스레드에서 콜백 실행
+                    mainHandler.post {
+                        if (isTimerRunning) {
+                            onTickCallback(remainingMillis)
+                        }
+                    }
+                    
+                    // 100ms 대기
+                    Thread.sleep(100)
+                }
+                
+                // 타이머 완료
+                if (isTimerRunning) {
+                    isTimerRunning = false
+                    mainHandler.post {
+                        lockScreen()
+                        playCompletionSound()
+                        vibrateOnCompletion()
+                        sendTimerFinishBroadcast()
+                        onFinishCallback()
+                    }
+                }
+            } catch (e: InterruptedException) {
+                Log.d("TimerManager", "Timer thread interrupted")
+            } catch (e: Exception) {
+                Log.e("TimerManager", "Timer thread error: ${e.message}")
             }
         }
-
-        countDownTimer?.start()
-        // 시작 시 포커스 모드 활성화
-        maintainFocusMode()
     }
 
     fun pauseTimer() {
-        countDownTimer?.cancel()
+        isTimerRunning = false
+        timerThread?.interrupt()
+        timerThread = null
+        Log.i("TimerManager", "Timer paused")
     }
 
     fun resumeTimer(remainingMillis: Long) {
-        countDownTimer = object : CountDownTimer(remainingMillis, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                onTickCallback(millisUntilFinished)
-                maintainFocusMode()
-            }
-
-            override fun onFinish() {
-                lockScreen()
-                playCompletionSound()
-                vibrateOnCompletion()
-                // 타이머 완료 브로드캐스트 전송
-                sendTimerFinishBroadcast()
-                onFinishCallback()
+        // 기존 타이머 취소
+        pauseTimer()
+        
+        // 새로운 종료 시간 계산
+        isTimerRunning = true
+        timerEndTime = System.currentTimeMillis() + remainingMillis
+        Log.i("TimerManager", "Timer resumed: ${remainingMillis}ms, endTime: $timerEndTime")
+        
+        maintainFocusMode()
+        
+        // 백그라운드 스레드에서 타이머 실행
+        timerThread = thread(isDaemon = false) {
+            try {
+                while (isTimerRunning && System.currentTimeMillis() < timerEndTime) {
+                    val currentTime = System.currentTimeMillis()
+                    val remainingMillis = timerEndTime - currentTime
+                    
+                    if (remainingMillis <= 0) {
+                        break
+                    }
+                    
+                    // UI 스레드에서 콜백 실행
+                    mainHandler.post {
+                        if (isTimerRunning) {
+                            onTickCallback(remainingMillis)
+                        }
+                    }
+                    
+                    // 100ms 대기
+                    Thread.sleep(100)
+                }
+                
+                // 타이머 완료
+                if (isTimerRunning) {
+                    isTimerRunning = false
+                    mainHandler.post {
+                        lockScreen()
+                        playCompletionSound()
+                        vibrateOnCompletion()
+                        sendTimerFinishBroadcast()
+                        onFinishCallback()
+                    }
+                }
+            } catch (e: InterruptedException) {
+                Log.d("TimerManager", "Timer thread interrupted")
+            } catch (e: Exception) {
+                Log.e("TimerManager", "Timer thread error: ${e.message}")
             }
         }
-
-        countDownTimer?.start()
-        maintainFocusMode()
     }
 
     fun cancelTimer() {
-        countDownTimer?.cancel()
+        isTimerRunning = false
+        timerThread?.interrupt()
+        timerThread = null
         unlockScreen()
+        Log.i("TimerManager", "Timer cancelled")
     }
 
     private fun maintainFocusMode() {
         try {
             val admins = devicePolicyManager.activeAdmins
             if (admins != null && admins.isNotEmpty()) {
-                // 카메라 비활성화로 앱 접근 제한
                 devicePolicyManager.setCameraDisabled(admins[0], true)
             }
         } catch (e: Exception) {
@@ -89,9 +159,7 @@ class TimerManager(private val context: Context, private val onTickCallback: (Lo
         try {
             val admins = devicePolicyManager.activeAdmins
             if (admins != null && admins.isNotEmpty()) {
-                // 다른 앱 실행 방지
                 devicePolicyManager.setCameraDisabled(admins[0], true)
-                // 잠금화면 표시
                 devicePolicyManager.lockNow()
                 Log.i("TimerManager", "Screen locked successfully")
             }

@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
         android:allowBackup="true"
@@ -44,6 +47,20 @@
                 android:name="android.app.device_admin"
                 android:resource="@xml/admin_receiver" />
         </receiver>
+
+        <receiver
+            android:name=".TimerBroadcastReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.studytime.TIMER_UPDATE" />
+                <action android:name="com.studytime.TIMER_FINISHED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".TimerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
 
     </application>
 

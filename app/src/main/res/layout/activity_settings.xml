@@ -29,11 +29,68 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="커스텀 타이머 관리"
+        android:text="타이머 추가"
         android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="@color/purple_500"
+        android:layout_marginBottom="16dp"
+        android:layout_marginTop="16dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:spacing="8dp">
+
+        <EditText
+            android:id="@+id/timerInputField"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:inputType="number"
+            android:hint="분 (1~1440)"
+            android:padding="8dp"
+            android:background="@android:drawable/edit_text"
+            android:layout_margin="4dp" />
+
+        <Button
+            android:id="@+id/btnAddTimer"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="추가"
+            android:layout_margin="4dp" />
+
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="UI 색상"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@color/purple_500"
+        android:layout_marginBottom="8dp"
+        android:layout_marginTop="16dp" />
+
+    <LinearLayout
+        android:id="@+id/colorSelectionContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:spacing="8dp"
         android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="타이머 목록"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="@color/purple_500"
+        android:layout_marginBottom="8dp"
+        android:layout_marginTop="16dp" />
 
     <ScrollView
         android:layout_width="match_parent"
