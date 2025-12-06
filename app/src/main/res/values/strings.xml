@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StudyTime</string>
+    <string name="timer_5sec">5 초</string>
+    <string name="timer_5min">5 분</string>
+    <string name="timer_10min">10 분</string>
+    <string name="timer_15min">15 분</string>
+    <string name="timer_25min">25 분</string>
+    <string name="timer_50min">50 분</string>
+    <string name="custom_timer">커스텀</string>
+    <string name="start">시작</string>
+    <string name="pause">일시정지</string>
+    <string name="stop">중지</string>
+    <string name="settings">설정</string>
+    <string name="minutes">분</string>
+    <string name="seconds">초</string>
+    
+    <!-- 칭찬 메시지 -->
+    <string name="praise_1">정말 잘했어!</string>
+    <string name="praise_2">집중력 대박!</string>
+    <string name="praise_3">훌륭한 노력!</string>
+    <string name="praise_4">최고의 공부 시간!</string>
+    <string name="praise_5">대단해!</string>
+    <string name="praise_6">정말 멋있어!</string>
+    <string name="praise_7">계속 이 정도면 성공이야!</string>
+    <string name="praise_8">완벽한 집중력!</string>
+    <string name="praise_9">너 정말 노력가야!</string>
+    <string name="praise_10">이 정도면 천재인데?</string>
+    <string name="praise_11">공부 영웅!</string>
+    <string name="praise_12">엄청 잘했어!</string>
+    <string name="praise_13">너의 집중력은 최고야!</string>
+    <string name="praise_14">정말 멋진 시간이었어!</string>
+    <string name="praise_15">너는 할 수 있어!</string>
+    <string name="praise_16">오늘의 영웅!</string>
+    <string name="praise_17">정말 자랑스러워!</string>
+    <string name="praise_18">넌 정말 최고야!</string>
+    <string name="praise_19">완벽한 집중 시간!</string>
+    <string name="praise_20">대단한 성취!</string>
+    
+    <!-- Device Admin 메시지 -->
+    <string name="device_admin_required">Device Admin 권한이 필요합니다</string>
+    <string name="device_admin_required_message">집중 모드를 사용하려면 Device Admin 권한을 활성화해야 합니다.</string>
+    <string name="enable_device_admin">권한 활성화</string>
+    <string name="cancel">취소</string>
+</resources>

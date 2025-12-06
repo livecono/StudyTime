@@ -1,0 +1,2 @@
+-keep class com.studytime.** { *; }
+-keep class android.app.admin.** { *; }
