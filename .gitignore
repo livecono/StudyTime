@@ -1,9 +1,32 @@
+# Build directories
+build/
 .gradle/
+app/build/
+
+# Gradle wrapper cache
+gradle-8.0/
+gradle/wrapper/gradle-wrapper.jar
+
+# IDE
 .idea/
 *.iml
+*.iws
+*.ipr
+
+# OS
 .DS_Store
-/build/
+Thumbs.db
+
+# Local properties
+local.properties
+
+# Android
 /captures/
 .externalNativeBuild
 .cxx
-local.properties
+
+# Logs
+*.log
+logcat_studytime.txt
+full_logcat.txt
+error_logs.txt
