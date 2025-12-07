@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 
 class LockScreenActivity : AppCompatActivity() {
     private lateinit var timerDisplay: TextView
+    private lateinit var studyingStatusText: TextView
     private lateinit var btnPauseScreen: Button
     private lateinit var btnStopScreen: Button
     private lateinit var timerBroadcastReceiver: TimerBroadcastReceiver
@@ -40,8 +41,17 @@ class LockScreenActivity : AppCompatActivity() {
 
         preferenceManager = PreferenceManager(this)
         timerDisplay = findViewById(R.id.lockScreenTimerDisplay)
+        studyingStatusText = findViewById(R.id.studyingStatusText)
         btnPauseScreen = findViewById(R.id.btnPauseScreen)
         btnStopScreen = findViewById(R.id.btnStopScreen)
+        
+        // 사용자 이름 설정
+        val userName = preferenceManager.getUserName()
+        studyingStatusText.text = if (userName.isNotEmpty()) {
+            "$userName 공부중..."
+        } else {
+            "공부중..."
+        }
         
         // 버튼 리스너 설정
         btnPauseScreen.setOnClickListener { pauseTimer() }
@@ -56,17 +66,17 @@ class LockScreenActivity : AppCompatActivity() {
         }
 
         // 브로드캐스트 리시버 생성
-        timerBroadcastReceiver = TimerBroadcastReceiver(
+        timerBroadcastReceiver = TimerBroadcastReceiver().apply {
             onUpdate = { millisUntilFinished ->
                 updateTimerDisplay(millisUntilFinished)
-            },
+            }
             onFinish = {
                 // 타이머 완료 - 자동으로 홈화면 복귀
                 timerDisplay.text = "00:00"
                 preferenceManager.clearTimerState()
                 finish()
             }
-        )
+        }
 
         // 주기적으로 SharedPreferences에서 타이머 상태 읽기
         updateRunnable = object : Runnable {

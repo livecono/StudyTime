@@ -4,32 +4,34 @@ import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.RingtoneManager
+import android.media.Ringtone
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
+import android.os.Vibrator
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationCompat
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class MainActivity : AppCompatActivity() {
     private lateinit var timerDisplay: TextView
     private lateinit var emptyTimerText: TextView
     private lateinit var btnSettings: Button
-    private lateinit var customTimerContainer: LinearLayout
+    private lateinit var customTimerContainer: GridLayout
     private lateinit var preferenceManager: PreferenceManager
     private lateinit var messageRepository: MessageRepository
-    private lateinit var devicePolicyManager: DevicePolicyManager
     private lateinit var powerManager: PowerManager
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -48,7 +50,6 @@ class MainActivity : AppCompatActivity() {
         initializeViews()
         initializeManagers()
         applyUIColors()
-        checkDeviceAdminPermission()
         setupClickListeners()
         updateCustomTimerButtons()
     }
@@ -63,19 +64,18 @@ class MainActivity : AppCompatActivity() {
     private fun initializeManagers() {
         preferenceManager = PreferenceManager(this)
         messageRepository = MessageRepository(this)
-        devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
 
         // TimerService로부터 브로드캐스트 수신
-        timerBroadcastReceiver = TimerBroadcastReceiver(
+        timerBroadcastReceiver = TimerBroadcastReceiver().apply {
             onUpdate = { millisUntilFinished ->
                 remainingMillis = millisUntilFinished
                 updateTimerDisplay(millisUntilFinished)
-            },
+            }
             onFinish = {
                 handleTimerFinish()
             }
-        )
+        }
 
         val filter = IntentFilter("com.studytime.TIMER_UPDATE")
         filter.addAction("com.studytime.TIMER_FINISHED")
@@ -97,32 +97,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isDeviceAdminActive(): Boolean {
-        val componentName = ComponentName(this, AdminReceiver::class.java)
-        return devicePolicyManager.isAdminActive(componentName)
+        // Device Admin 권한 제거됨
+        return true
     }
 
     private fun showDeviceAdminDialog() {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.device_admin_required)
-            .setMessage(R.string.device_admin_required_message)
-            .setPositiveButton(R.string.enable_device_admin) { _, _ ->
-                enableDeviceAdmin()
-            }
-            .setNegativeButton(R.string.cancel) { _, _ ->
-                Toast.makeText(this, "Cannot use focus mode without Device Admin", Toast.LENGTH_SHORT).show()
-            }
-            .setCancelable(false)
-            .show()
+        // Device Admin 권한 제거됨
     }
 
     private fun enableDeviceAdmin() {
-        val componentName = ComponentName(this, AdminReceiver::class.java)
-        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
-            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Device Admin permission required for focus mode.")
-        }
-        startActivity(intent)
+        // Device Admin 권한 제거됨
     }
+
+
 
     private fun applyUIColors() {
         val colorName = preferenceManager.getUIColor()
@@ -159,13 +146,17 @@ class MainActivity : AppCompatActivity() {
             emptyTimerText.visibility = android.view.View.GONE
         }
 
+        // 타이머 개수가 1개 또는 2개면 weight 미사용, 3개 이상이면 weight 사용
+        val useWeight = customTimers.size >= 3
+        val weight = if (useWeight) 1f else 0f
+
         for (minutes in customTimers) {
             val btn = Button(this).apply {
                 text = "${minutes}분"
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = if (useWeight) 0 else GridLayout.LayoutParams.WRAP_CONTENT
+                    height = GridLayout.LayoutParams.WRAP_CONTENT
+                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, weight)
                     setMargins(4, 4, 4, 4)
                 }
                 setOnClickListener { 
@@ -184,11 +175,6 @@ class MainActivity : AppCompatActivity() {
     private fun startTimer() {
         if (remainingMillis == 0L) {
             Toast.makeText(this, "타이머를 선택하세요", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        if (!isDeviceAdminActive()) {
-            Toast.makeText(this, "Device Admin permission required", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -227,6 +213,7 @@ class MainActivity : AppCompatActivity() {
         val praise = messageRepository.getRandomMessage()
         showPraiseDialog(praise)
         
+        playCompletionNotification()
         showCompletionNotification(praise)
     }
 
@@ -353,6 +340,98 @@ class MainActivity : AppCompatActivity() {
                 selectedMinutes = 0
                 remainingMillis = 0L
             }
+        }
+    }
+
+    private fun playCompletionNotification() {
+        val notificationType = preferenceManager.getNotificationType()
+        val durationSeconds = preferenceManager.getNotificationDuration()
+
+        when (notificationType) {
+            "vibration" -> vibrate(durationSeconds)
+            "sound" -> playSound(durationSeconds)
+            "both" -> {
+                playSound(durationSeconds)
+                vibrate(durationSeconds)
+            }
+        }
+    }
+
+    private fun vibrate(durationSeconds: Int) {
+        try {
+            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            val totalDurationMillis = (durationSeconds * 1000).toLong()
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // 500ms 진동, 200ms 휴식을 반복 (총 700ms가 한 사이클)
+                val pattern = longArrayOf(0, 500, 200)
+                // repeatIndex를 1로 설정하면 pattern[1]부터 계속 반복
+                vibrator.vibrate(android.os.VibrationEffect.createWaveform(pattern, 1))
+                
+                // 설정 시간 후 진동 중지
+                Handler(Looper.getMainLooper()).postDelayed({
+                    try {
+                        vibrator.cancel()
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Failed to cancel vibration: ${e.message}")
+                    }
+                }, totalDurationMillis)
+            } else {
+                @Suppress("DEPRECATION")
+                val pattern = longArrayOf(0, 500, 200)
+                vibrator.vibrate(pattern, 1)
+                
+                Handler(Looper.getMainLooper()).postDelayed({
+                    try {
+                        vibrator.cancel()
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Failed to cancel vibration: ${e.message}")
+                    }
+                }, totalDurationMillis)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Failed to vibrate: ${e.message}")
+        }
+    }
+
+    private fun playSound(durationSeconds: Int) {
+        try {
+            val notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val ringtone = RingtoneManager.getRingtone(this, notificationUri)
+            
+            val startTime = System.currentTimeMillis()
+            val durationMillis = (durationSeconds * 1000).toLong()
+            
+            ringtone.play()
+            
+            // 설정된 시간 동안 계속 소리 유지 (중단되면 재시작)
+            val checkRunnable = object : Runnable {
+                override fun run() {
+                    val elapsedTime = System.currentTimeMillis() - startTime
+                    
+                    if (elapsedTime < durationMillis) {
+                        try {
+                            if (!ringtone.isPlaying) {
+                                ringtone.play()
+                            }
+                            Handler(Looper.getMainLooper()).postDelayed(this, 100)
+                        } catch (e: Exception) {
+                            android.util.Log.e("MainActivity", "Error during sound playback: ${e.message}")
+                        }
+                    } else {
+                        try {
+                            if (ringtone.isPlaying) {
+                                ringtone.stop()
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("MainActivity", "Failed to stop sound: ${e.message}")
+                        }
+                    }
+                }
+            }
+            Handler(Looper.getMainLooper()).post(checkRunnable)
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Failed to play sound: ${e.message}")
         }
     }
 

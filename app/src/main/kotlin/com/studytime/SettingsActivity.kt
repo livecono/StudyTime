@@ -1,11 +1,17 @@
 package com.studytime
 
 import android.os.Bundle
+import android.view.inputmethod.InputMethodManager
+import android.content.Context
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import android.text.TextWatcher
+import android.text.Editable
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 
@@ -16,6 +22,11 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var btnAddTimer: Button
     private lateinit var btnBack: Button
     private lateinit var userNameInput: EditText
+    private lateinit var notificationTypeGroup: RadioGroup
+    private lateinit var radiVibration: RadioButton
+    private lateinit var radioSound: RadioButton
+    private lateinit var radioBoth: RadioButton
+    private lateinit var notificationDurationInput: EditText
     private lateinit var preferenceManager: PreferenceManager
 
     private val colors = mapOf(
@@ -38,11 +49,49 @@ class SettingsActivity : AppCompatActivity() {
         btnAddTimer = findViewById(R.id.btnAddTimer)
         btnBack = findViewById(R.id.btnBack)
         userNameInput = findViewById(R.id.userNameInput)
+        notificationTypeGroup = findViewById(R.id.notificationTypeGroup)
+        radiVibration = findViewById(R.id.radiVibration)
+        radioSound = findViewById(R.id.radioSound)
+        radioBoth = findViewById(R.id.radioBoth)
+        notificationDurationInput = findViewById(R.id.notificationDurationInput)
         preferenceManager = PreferenceManager(this)
 
         userNameInput.setText(preferenceManager.getUserName())
 
+        // 알림 설정 초기화
+        val notificationType = preferenceManager.getNotificationType()
+        when (notificationType) {
+            "vibration" -> radiVibration.isChecked = true
+            "sound" -> radioSound.isChecked = true
+            "both" -> radioBoth.isChecked = true
+        }
+        notificationDurationInput.setText(preferenceManager.getNotificationDuration().toString())
+
+        // RadioGroup 체크 변경 리스너 추가
+        notificationTypeGroup.setOnCheckedChangeListener { _, checkedId ->
+            val notificationType = when (checkedId) {
+                R.id.radiVibration -> "vibration"
+                R.id.radioSound -> "sound"
+                R.id.radioBoth -> "both"
+                else -> "vibration"
+            }
+            preferenceManager.setNotificationType(notificationType)
+        }
+
         btnAddTimer.setOnClickListener { addNewTimer() }
+        notificationDurationInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                val durationStr = s.toString().trim()
+                if (durationStr.isNotEmpty()) {
+                    val duration = durationStr.toIntOrNull()
+                    if (duration != null && duration in 1..60) {
+                        preferenceManager.setNotificationDuration(duration)
+                    }
+                }
+            }
+        })
         btnBack.setOnClickListener { 
             val userName = userNameInput.text.toString().trim()
             preferenceManager.setUserName(userName)
@@ -74,6 +123,14 @@ class SettingsActivity : AppCompatActivity() {
 
         preferenceManager.addCustomTimer(minutes)
         timerInputField.text.clear()
+        
+        // 키보드 숨기기
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(timerInputField.windowToken, 0)
+        
+        // 포커스 해제
+        timerInputField.clearFocus()
+        
         updateCustomTimersList()
         Toast.makeText(this, "${minutes}분 타이머 추가됨", Toast.LENGTH_SHORT).show()
     }
@@ -148,4 +205,6 @@ class SettingsActivity : AppCompatActivity() {
             colorSelectionContainer.addView(colorButton)
         }
     }
+
+
 }

@@ -51,18 +51,13 @@
         android:layout_marginBottom="8dp"
         android:visibility="gone" />
 
-    <HorizontalScrollView
+    <GridLayout
+        android:id="@+id/customTimerContainer"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <LinearLayout
-            android:id="@+id/customTimerContainer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:spacing="8dp" />
-
-    </HorizontalScrollView>
+        android:layout_height="wrap_content"
+        android:columnCount="3"
+        android:alignmentMode="alignMargins"
+        android:columnOrderPreserved="false" />
 
     <!-- 설정 버튼 -->
     <Button

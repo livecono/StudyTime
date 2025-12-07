@@ -1,6 +1,5 @@
 package com.studytime
 
-import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
@@ -12,7 +11,6 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import kotlin.concurrent.thread
 
 class TimerManager(private val context: Context, private val onTickCallback: (Long) -> Unit, private val onFinishCallback: () -> Unit) {
-    private val devicePolicyManager = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
     
     // 백그라운드 스레드 기반 타이머
     private var timerThread: Thread? = null
@@ -145,38 +143,16 @@ class TimerManager(private val context: Context, private val onTickCallback: (Lo
     }
 
     private fun maintainFocusMode() {
-        try {
-            val admins = devicePolicyManager.activeAdmins
-            if (admins != null && admins.isNotEmpty()) {
-                devicePolicyManager.setCameraDisabled(admins[0], true)
-            }
-        } catch (e: Exception) {
-            Log.e("TimerManager", "Failed to maintain focus mode: ${e.message}")
-        }
+        // Device Admin 권한 제거됨
     }
 
     private fun lockScreen() {
-        try {
-            val admins = devicePolicyManager.activeAdmins
-            if (admins != null && admins.isNotEmpty()) {
-                devicePolicyManager.setCameraDisabled(admins[0], true)
-                devicePolicyManager.lockNow()
-                Log.i("TimerManager", "Screen locked successfully")
-            }
-        } catch (e: Exception) {
-            Log.e("TimerManager", "Failed to lock screen: ${e.message}")
-        }
+        // Device Admin 권한 제거됨
+        Log.i("TimerManager", "Screen lock feature removed")
     }
 
     private fun unlockScreen() {
-        try {
-            val admins = devicePolicyManager.activeAdmins
-            if (admins != null && admins.isNotEmpty()) {
-                devicePolicyManager.setCameraDisabled(admins[0], false)
-            }
-        } catch (e: Exception) {
-            Log.e("TimerManager", "Failed to unlock: ${e.message}")
-        }
+        // Device Admin 권한 제거됨
     }
 
     private fun playCompletionSound() {

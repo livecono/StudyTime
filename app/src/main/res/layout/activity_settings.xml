@@ -1,101 +1,173 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@color/white"
-    tools:context=".SettingsActivity">
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="사용자 이름"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="@color/purple_500"
-        android:layout_marginBottom="8dp" />
-
-    <EditText
-        android:id="@+id/userNameInput"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:hint="이름을 입력하세요"
-        android:padding="12dp"
-        android:inputType="text"
-        android:layout_marginBottom="24dp" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="타이머 추가"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="@color/purple_500"
-        android:layout_marginBottom="16dp"
-        android:layout_marginTop="16dp" />
+    android:background="@color/white">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:spacing="8dp">
+        android:orientation="vertical"
+        android:padding="16dp"
+        tools:context=".SettingsActivity">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="사용자 이름"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_500"
+            android:layout_marginBottom="8dp" />
 
         <EditText
-            android:id="@+id/timerInputField"
-            android:layout_width="0dp"
+            android:id="@+id/userNameInput"
+            android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:layout_weight="1"
-            android:inputType="number"
-            android:hint="분 (1~1440)"
-            android:padding="8dp"
-            android:background="@android:drawable/edit_text"
-            android:layout_margin="4dp" />
+            android:hint="이름을 입력하세요"
+            android:padding="12dp"
+            android:inputType="text"
+            android:layout_marginBottom="24dp" />
 
-        <Button
-            android:id="@+id/btnAddTimer"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:text="추가"
-            android:layout_margin="4dp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="타이머 추가"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_500"
+            android:layout_marginBottom="16dp"
+            android:layout_marginTop="16dp" />
 
-    </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:spacing="8dp">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="UI 색상"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="@color/purple_500"
-        android:layout_marginBottom="8dp"
-        android:layout_marginTop="16dp" />
+            <EditText
+                android:id="@+id/timerInputField"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:inputType="number"
+                android:hint="분 (1~1440)"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:layout_margin="4dp" />
 
-    <LinearLayout
-        android:id="@+id/colorSelectionContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:spacing="8dp"
-        android:layout_marginBottom="16dp" />
+            <Button
+                android:id="@+id/btnAddTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="추가"
+                android:layout_margin="4dp" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="타이머 목록"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:textColor="@color/purple_500"
-        android:layout_marginBottom="8dp"
-        android:layout_marginTop="16dp" />
+        </LinearLayout>
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="UI 색상"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_500"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="16dp" />
+
+        <LinearLayout
+            android:id="@+id/colorSelectionContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:spacing="8dp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="완료 알림 설정"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_500"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="알림 종류"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <RadioGroup
+                android:id="@+id/notificationTypeGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:spacing="8dp">
+
+                <RadioButton
+                    android:id="@+id/radiVibration"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="진동" />
+
+                <RadioButton
+                    android:id="@+id/radioSound"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="소리" />
+
+                <RadioButton
+                    android:id="@+id/radioBoth"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="진동+소리" />
+
+            </RadioGroup>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="알림 시간 (초)"
+                android:textSize="14sp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/notificationDurationInput"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:inputType="number"
+                android:hint="1~60"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:layout_margin="4dp" />
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="타이머 목록"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_500"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="16dp" />
 
         <LinearLayout
             android:id="@+id/customTimersListContainer"
@@ -103,13 +175,13 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" />
 
-    </ScrollView>
+        <Button
+            android:id="@+id/btnBack"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="돌아가기"
+            android:layout_marginTop="16dp" />
 
-    <Button
-        android:id="@+id/btnBack"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:text="돌아가기"
-        android:layout_marginTop="16dp" />
+    </LinearLayout>
 
-</LinearLayout>
+</ScrollView>

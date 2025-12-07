@@ -16,6 +16,8 @@ class PreferenceManager(context: Context) {
         private const val TIMER_IS_RUNNING = "timer_is_running"
         private const val TIMER_REMAINING_MILLIS = "timer_remaining_millis"
         private const val UI_COLOR = "ui_color"
+        private const val NOTIFICATION_TYPE = "notification_type"
+        private const val NOTIFICATION_DURATION = "notification_duration"
     }
 
     fun isFirstRun(): Boolean = prefs.getBoolean(FIRST_RUN, true)
@@ -101,5 +103,19 @@ class PreferenceManager(context: Context) {
 
     fun setUIColor(colorName: String) {
         prefs.edit().putString(UI_COLOR, colorName).apply()
+    }
+
+    fun getNotificationType(): String = prefs.getString(NOTIFICATION_TYPE, "vibration") ?: "vibration"
+
+    fun setNotificationType(type: String) {
+        // "vibration", "sound", "both"
+        prefs.edit().putString(NOTIFICATION_TYPE, type).apply()
+    }
+
+    fun getNotificationDuration(): Int = prefs.getInt(NOTIFICATION_DURATION, 3)
+
+    fun setNotificationDuration(seconds: Int) {
+        val clampedSeconds = seconds.coerceIn(1, 60)
+        prefs.edit().putInt(NOTIFICATION_DURATION, clampedSeconds).apply()
     }
 }
